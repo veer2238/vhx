@@ -3,6 +3,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors'); 
 const mongoose = require('mongoose')
+const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser'); // Add this line
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt')
@@ -11,6 +12,8 @@ app.use(express.json()); // To parse JSON bodies
 app.use(bodyParser.json()); // Add this line to parse JSON requests
 app.use(cors());
 
+
+
 mongoose
 .connect(
   "mongodb+srv://hundlanijay:hVFEqU8iumiSowXL@registerdata.pqv1sbi.mongodb.net/?retryWrites=true&w=majority"
@@ -18,27 +21,46 @@ mongoose
 .then(() => console.log("mongo connected"))
 .catch((err) => console.log("mongo error", err));
 
-
 const registerSchema = new mongoose.Schema({
   name: {
-  type: String,
-  require: true,
+    type: String,
+    required: true,
   },
   email: {
-  type: String,
-  require: true,
+    type: String,
+    required: true,
   },
   mobile: {
-  type: String,
-  require: true,
+    type: String,
+    required: true,
   },
   password: {
-  type: String,
-  require: true,
+    type: String,
+    required: true,
   },
-  });
+  cart: [
+    {
+      
+        productId: { type: Number },
+        quantity: { type: Number, default: 1 },
+       productimg:{type:String},
+        productname: { type: String },
+        productprice: { type: Number }
+      
+    },
+  ],
+});
+
+
+
+  // Product Schema
 
   const User = mongoose.model("register", registerSchema);
+
+
+
+  
+  
 
 //get register data
 
@@ -152,8 +174,18 @@ app.post('/login', async (req, res) => {
       return res.json({ success: false, error: 'Invalid  password' });
     }
 
+ 
     // Return user data (in this case, just the name)
-    res.json({ success: true,data:user.name});
+   
+    const token = jwt.sign({ email }, 'secret-key', { expiresIn: '2h' });
+
+    console.log(token)
+    
+ // Fetch user's cart items
+ const cartItems = user.cart;
+
+ // Return user data and cart items
+ res.json({ success: true, data: token,cartdata:cartItems});
  } catch (error) {
   console.error('Error during login:', error);
  }
@@ -165,27 +197,222 @@ app.post('/login', async (req, res) => {
   
 });
 
-app.get('/user/:username', async (req, res) => {
-  const { username } = req.params;
+app.get('/api/user', async (req, res) => {
+  try {
+    // Extract token from request headers
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
 
+    // Verify token
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        if (err.name === 'TokenExpiredError') {
+          
+          return res.status(401).json({ message: 'Token expired' });
+        } else {
+          return res.status(401).json({ message: 'Invalid token' });
+        }
+      }
 
-    const user = await User.findOne({ name: username });
+      // Find user based on decoded email
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
 
-   
-
-const userData = {
-  name: user.name,
-  email: user.email,
-  mobile: user.mobile,
-  password:user.password
-  
-  // Avoid sending sensitive information like passwords to the client
-};
-
-res.json({ success: true, data: userData });
-
-
+      // Send user data
+      res.status(200).json({ name: user.name,mobile:user.mobile });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
+
+app.post('/add-to-cart', async (req, res) => {
+  const { productId,productname,productimg,productprice, quantity } = req.body;
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      
+
+      // Add the product to the user's cart
+      user.cart.push({
+        productId,
+        quantity,
+        productname,
+        productimg,
+        productprice
+        
+      });
+
+      await user.save();
+
+      console.log(user)
+
+      res.json({ success: true, message: 'Product added to cart' });
+    });
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.get('/cart', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Send the user's cart items
+      res.json({ cartItems: user.cart });
+    });
+  } catch (error) {
+    console.error('Error fetching cart items:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+ 
+
+app.post('/remove-from-cart', async (req, res) => {
+  const { productId } = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { email: decoded.email },
+        { $pull: { cart: { productId: productId } } },
+        { new: true }
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Fetch the updated cart items
+      const updatedCartItems = user.cart;
+
+      res.json({ success: true, message: 'Product removed from cart', cartItems: updatedCartItems });
+    });
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.post('/increase-quantity', async (req, res) => {
+  const { productId } = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { email: decoded.email, 'cart.productId': productId },
+        { $inc: { 'cart.$.quantity': 1 } }, // Increment quantity by 1
+        { new: true }
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Fetch the updated cart items
+      const updatedCartItems = user.cart;
+
+      res.json({ success: true, message: 'Quantity added', cartItems: updatedCartItems });
+    });
+   
+  } catch (error) {
+    console.error('Error increasing quantity:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.post('/decrease-quantity', async (req, res) => {
+  const { productId } = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { email: decoded.email, 'cart.productId': productId },
+        { $inc: { 'cart.$.quantity': -1 } }, // Increment quantity by 1
+        { new: true }
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Fetch the updated cart items
+      const updatedCartItems = user.cart;
+
+      res.json({ success: true, message: 'Quantity added', cartItems: updatedCartItems });
+    });
+   
+  } catch (error) {
+    console.error('Error increasing quantity:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+
+
+
+
+
 
 
 
