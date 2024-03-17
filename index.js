@@ -4,6 +4,7 @@ const app = express();
 const cors = require('cors'); 
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
+const stripe = require('stripe')('sk_test_51OqCilSEUqhlDKWTeud3OkR5sYXHBSgXlCaNEorkAJ3jSsZAtFnLwrem8AV28wJgbUPOLubgBHjxWdEF9ap47EbM00A2T7AKDA');
 const bodyParser = require('body-parser'); // Add this line
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt')
@@ -49,6 +50,33 @@ const registerSchema = new mongoose.Schema({
       
     },
   ],
+
+  wish: [
+    {
+      
+        productId: { type: Number },
+        quantity: { type: Number, default: 1 },
+       productimg:{type:String},
+        productname: { type: String },
+        productprice: { type: Number }
+       
+      
+    },
+  ],
+
+  shippingInfo: {
+    name: String,
+    mobile: String,
+    email: String,
+    address: String,
+    state: String,
+    pincode: String,
+    landmark: String,
+    city: String,
+    alternate: String
+  }
+
+ 
 });
 
 
@@ -177,15 +205,20 @@ app.post('/login', async (req, res) => {
  
     // Return user data (in this case, just the name)
    
-    const token = jwt.sign({ email }, 'secret-key', { expiresIn: '2h' });
+    const token = jwt.sign({ email }, 'secret-key', { expiresIn: '10h' });
 
     console.log(token)
+    console.log(user.name)
     
  // Fetch user's cart items
  const cartItems = user.cart;
 
+ const wishItems = user.wish;
+
+ const shippingInfo = user.shippingInfo || {};
+
  // Return user data and cart items
- res.json({ success: true, data: token,cartdata:cartItems});
+ res.json({ success: true, data: token,cartdata:cartItems,wishdata:wishItems,shipping:shippingInfo });
  } catch (error) {
   console.error('Error during login:', error);
  }
@@ -199,34 +232,28 @@ app.post('/login', async (req, res) => {
 
 app.get('/api/user', async (req, res) => {
   try {
-    // Extract token from request headers
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return res.status(401).json({ message: 'Token not provided' });
     }
 
-    // Verify token
     jwt.verify(token, 'secret-key', async (err, decoded) => {
       if (err) {
-        if (err.name === 'TokenExpiredError') {
-          
-          return res.status(401).json({ message: 'Token expired' });
-        } else {
-          return res.status(401).json({ message: 'Invalid token' });
-        }
+        return res.status(401).json({ message: 'Invalid token' });
       }
 
-      // Find user based on decoded email
       const user = await User.findOne({ email: decoded.email });
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Send user data
-      res.status(200).json({ name: user.name,mobile:user.mobile });
+      console.log(user.name)
+
+      // Send the user's cart items
+      res.json({ name: user.name,mobile:user.mobile });
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching cart items:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -266,7 +293,7 @@ app.post('/add-to-cart', async (req, res) => {
 
       console.log(user)
 
-      res.json({ success: true, message: 'Product added to cart' });
+      res.json({ success: true, message: 'Product added to cart',cartItems: user.cart,wishItems: user.wish });
     });
   } catch (error) {
     console.error('Error adding to cart:', error);
@@ -408,15 +435,185 @@ app.post('/decrease-quantity', async (req, res) => {
   }
 });
 
+app.post('/add-to-wish', async (req, res) => {
+  const { productId,productname,productimg,productprice,quantity } = req.body;
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      
+
+      // Add the product to the user's cart
+      user.wish.push({
+        productId,
+        productname,
+        productimg,
+        productprice,
+        quantity
+       
+        
+      });
+
+      await user.save();
+
+      console.log(user)
+
+      res.json({ success: true, message: 'Product added to Wish',wishItems: user.wish });
+    });
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.get('/wish', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Send the user's cart items
+      res.json({ wishItems: user.wish ,cartItems:user.cart});
+    });
+  } catch (error) {
+    console.error('Error fetching cart items:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+app.post('/remove-from-wish', async (req, res) => {
+  const { productId } = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { email: decoded.email },
+        { $pull: { wish: { productId: productId } } },
+        { new: true }
+      );
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Fetch the updated cart items
+      const updatedWishItems = user.wish;
+
+      res.json({ success: true, message: 'Product removed from cart', wishItems: updatedWishItems });
+    });
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.post('/save-shipping-info', async (req, res) => {
+  const { shippingInfo } = req.body;
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      
+
+      user.shippingInfo = shippingInfo;
+    await user.save();
+     
+
+      console.log(user)
+
+      res.json({ success: true, message: 'Shipping information saved successfully' });    });
+  } catch (error) {
+    console.error('Error saving shipping information:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+app.get('/get-user-address', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // You can directly send the shipping information in the response
+      const shippingInfo = user.shippingInfo || {};
+
+      res.json({ success: true, data:shippingInfo });
+      console.log(shippingInfo)
+    });
+  } catch (error) {
+    console.error('Error fetching user address:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
 
 
 
 
 
 
+        
 
 
-          
+
+
 app.listen(3034, () => {
 console.log('Server connected');
 });
