@@ -1,10 +1,12 @@
 //server.js
 const express = require('express');
 const app = express();
+const path = require('path');
+const fs = require('fs');
+app.use(express.static('assets'));
 const cors = require('cors'); 
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
-const stripe = require('stripe')('sk_test_51OqCilSEUqhlDKWTeud3OkR5sYXHBSgXlCaNEorkAJ3jSsZAtFnLwrem8AV28wJgbUPOLubgBHjxWdEF9ap47EbM00A2T7AKDA');
 const bodyParser = require('body-parser'); // Add this line
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt')
@@ -79,6 +81,38 @@ const registerSchema = new mongoose.Schema({
  
 });
 
+const ContactSchema = new mongoose.Schema({
+  name:{
+    type: String,
+    require: true,
+  },
+  mobile:{
+    type: String,
+    requre: true,
+  },
+  email:{
+    type: String,
+    requre: true,
+  },
+  message:{
+    type: String,
+    requre: true,
+  },
+
+});
+
+const NewsSchema = new mongoose.Schema({
+ 
+  email:{
+    type: String,
+    requre: true,
+  },
+ 
+
+});
+
+const User1 = mongoose.model("data", ContactSchema);
+
 
 
   // Product Schema
@@ -86,10 +120,184 @@ const registerSchema = new mongoose.Schema({
   const User = mongoose.model("register", registerSchema);
 
 
+ 
+  
+  const News = mongoose.model("newlater", NewsSchema);
+
+
+// get data from api
+app.get('/api', (req, res) => {
+  const filePath = path.join(__dirname, 'data.json');
+
+  fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+          console.error(err);
+          return res.json({ success: false, error: 'Internal Server Error' });
+      }
+
+      const jsonData = JSON.parse(data);
+
+      jsonData.forEach(item => {
+          if (item.home_page_route_category_page_img) {
+              item.home_page_route_category_page_img = req.protocol + '://' + req.get('host') + item.home_page_route_category_page_img;
+          }
+          item.product_container.forEach(product => {
+              product.imgs = req.protocol + '://' + req.get('host') + product.imgs;
+              product.first = req.protocol + '://' + req.get('host') + product.first;
+              product.second = req.protocol + '://' + req.get('host') + product.second;
+              product.third = req.protocol + '://' + req.get('host') + product.third;
+          });
+      });
+
+      res.json({ success: true, data: jsonData });
+  });
+});
 
   
   
+  app.post("/contact", async(req, res)=>{
+    const{name,mobile,email,message} = req.body;
+  
+  
+    try{
+  
+      const exist =await User1.findOne({email,message})
+  
+      if(exist){
+        return res.json({success:false,error:'you have already messaged..'})
+      }
+  
+      const result = await User1.create({
+        name,
+        mobile,
+        email,
+        message,
+      });
+  
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+    
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Welcome to VHX View',
+        html: `
+          <p>Hello ${name}</p>
+          <p>Thank you for registering with VHX View. We are excited to have you on board!</p>
+          <p>Best regards,</p>
+          <p>VHX View Team</p>
+        `,
+    
+    
+      };
+    
+    
+      
+    
+        const info =  await transporter.sendMail(mailOptions);
+        console.log('Email sent:', info.response);
+    
+  
+      res.json({success: true, message: 'Your message has been sent!'});
+      console.log(result);
+    } catch (error){
+      res.json({success: false, error:'Data not added'})
+    }
+  });
 
+  //news later
+app.post('/newlater', async(req, res) =>{
+  const {email} = req.body;
+  
+  // console.log(email)
+  
+  
+  try {
+  
+    const existingUserr = await News.findOne({ email });
+    const existingRegister = await User.findOne({ email });
+   
+  
+    if (existingUserr || existingRegister) {
+      return res.json({ success: false, error: 'You are already a Subscriber!!' });
+    }
+  
+  
+  
+  const result = await News.create({
+      email,    
+      });
+                
+      console.log(result);
+    
+     const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    
+    
+  
+     const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Thank You For Subscribing!',
+      html: `
+        <p>Thank you for Subscrbing with VHX View. We are excited to have you on board!</p>
+        <p>Best regards,</p>
+        <p>VHX View Team</p>
+        <img src="https://i.ibb.co/qnVVcMk/digital-camera-photo-1080x675.jpg">
+      `,
+    
+    
+    };
+    
+    
+    
+    const info =  await transporter.sendMail(mailOptions);
+    console.log('Email sent:', info.response);
+    res.json({ success: true, message: 'thanks for subscribe' });
+  } 
+  
+  
+  
+  
+  catch (error) {
+    console.error('Error during Subscribtion:', error);
+  
+    res.json({ success: false, error: 'Internal Server Error' });
+  }
+  
+  
+  });
+
+
+  app.get('/newslatter-info', async (req, res) => {
+
+    try {
+      const emails = await News.find();
+      console.log(emails)
+      res.json({ success: true, data:emails });
+    } catch (error) {
+      res.json({ success: false, error: 'Failed to retrieve Emails' });
+    }
+  });
+  
+  app.get("/contact-info", async (req, res) => {
+    try {
+      const contacts = await User1.find();
+      res.json({ success: true, data:contacts });
+    } catch (error) {
+      res.json({ success: false, error: 'Failed to retrieve contacts' });
+    }
+  });
 //get register data
 
 app.post('/register', async(req, res) => {
@@ -100,11 +308,16 @@ try {
 
   // Check if the user with the given email already exists
   const existingUser = await User.findOne({ email });
+  
+  
+ 
+
+ 
  
 
   if (existingUser) {
     // If user exists, return an error response
-    return res.json({ success: false, error: 'Email already registered, please do login' });
+    return res.json({ success: false, error: 'Email already registered, please do login!' });
   }
 
 
@@ -124,6 +337,16 @@ const result = await User.create({
     });
               
     console.log(result);
+
+    // for newslatter
+    const result1 = await News.create({
+     
+      email,
+    
+                
+      });
+                
+      console.log(result1);
   
    // Create a Nodemailer transporter
    const transporter = nodemailer.createTransport({
@@ -180,7 +403,6 @@ catch (error) {
 
           
 
-// console.log('User Registration Data:', { name, email, mobile, password });
           
 });
 
@@ -222,7 +444,6 @@ app.post('/login', async (req, res) => {
  } catch (error) {
   console.error('Error during login:', error);
  }
-    // Check if the user with the given email exists
     
  
    
@@ -247,16 +468,16 @@ app.get('/api/user', async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      console.log(user.name)
+      
 
-      // Send the user's cart items
-      res.json({ name: user.name,mobile:user.mobile });
+      res.json({ name: user.name,mobile:user.mobile,email:user.email, password:user.password , shipping:user.shippingInfo });
     });
   } catch (error) {
     console.error('Error fetching cart items:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
 
 app.post('/add-to-cart', async (req, res) => {
   const { productId,productname,productimg,productprice, quantity } = req.body;
@@ -605,12 +826,192 @@ app.get('/get-user-address', async (req, res) => {
 });
 
 
+// ACCOUNT INFORMATION UPDATE 
+
+
+app.post('/name_update', async (req, res) => {
+  const { name } = req.body; // Destructure name, mobile, and password from req.body
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Update user details
+      user.name = name;
+      
+      await user.save();
+
+      console.log(user.name);
+      // console.log(user.mobile);
+      
+
+      res.json({ success: true, message: 'User details updated successfully' });
+    });
+  } catch (error) {
+    console.error('Error updating user details:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+
+app.post('/mobile_update', async (req, res) => {
+  const { mobile } = req.body; // Destructure name, mobile, and password from req.body
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Update user details
+      user.mobile = mobile;
+      
+      await user.save();
+
+      console.log(user.mobile);
+      // console.log(user.mobile);
+      
+
+      res.json({ success: true, message: 'User details updated successfully' });
+    });
+  } catch (error) {
+    console.error('Error updating user details:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+
+app.post('/pass_update', async (req, res) => {
+  const { password , oldpass } = req.body; // Destructure name, mobile, and password from req.body
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+     
+      // Update user details
+      console.log(oldpass)
+      const passwordMatch = await bcrypt.compare(oldpass, user.password);
+
+      if (!passwordMatch) {
+        return res.json({ success: false, error: 'Invalid  password' });
+      }
+        console.log(password)
+        const hashedPassword = await bcrypt.hash(password, 10);
+        console.log(hashedPassword)
+        user.password = hashedPassword;
+      
+        await user.save();
+
+       console.log(user.password);
+
+      
+      
+      
+
+      res.json({ success: true, message: 'User password updated successfully' });
+    });
+  } catch (error) {
+    console.error('Error updating user password:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+}); 
+
+app.post('/update-account-data', async (req, res) => {
+  const { name,email,mobile } = req.body;
+
+   
+
+   
+    const user = await User.findOne({email})
+
+      
+
+      user.name = name;
+      user.email = email;
+      user.mobile = mobile;
+    await user.save();
+     
+
+      console.log(user)
+
+      res.json({ success: true, message: 'Shipping information saved successfully' });  
+      });
+
+
+  
 
 
 
 
-        
+// schedule.scheduleJob('30 17 * 3 5', async () => {
+//   try {
+// const users = await News.find();
 
+// for (const user of users) {
+
+// const transporter = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
+
+// const mailOptions = {
+//   from: process.env.EMAIL_USER,
+//   to: 'jalpunpatel95@gmail.com',
+//   subject: ' V-Ex Tech Solution (Weekend Holiday Notice)',
+//   html: 'hi',
+// };
+
+
+  
+// const info = await transporter.sendMail(mailOptions);
+// console.log('Email sent:', info.response);
+// console.log('holiday emails sent successfully');
+  
+// }
+
+   
+//   } catch (error) {
+// console.error("Error sending birthday emails:", error);
+//   }
+// });
 
 
 
