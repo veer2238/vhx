@@ -137,21 +137,26 @@ app.get('/api', (req, res) => {
 
       const jsonData = JSON.parse(data);
 
-      jsonData.forEach(item => {
+      const updatedData = jsonData.map(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = 'https://'+ req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'https://' + req.get('host') + item.home_page_route_category_page_img;
           }
-          item.product_container.forEach(product => {
-              product.imgs = 'https://'+ req.get('host') + product.imgs;
-              product.first = 'https://'+ req.get('host') + product.first;
-              product.second = 'https://'+ req.get('host') + product.second;
-              product.third = 'https://' + req.get('host') + product.third;
+          item.product_container = item.product_container.map(product => {
+              return {
+                  ...product,
+                  imgs: 'https://' + req.get('host') + product.imgs,
+                  first: 'https://' + req.get('host') + product.first,
+                  second: 'https://' + req.get('host') + product.second,
+                  third: 'https://' + req.get('host') + product.third
+              };
           });
+          return item;
       });
 
-      res.json({ success: true, data: jsonData });
+      res.json({ success: true, data: updatedData });
   });
 });
+
 
   
   
