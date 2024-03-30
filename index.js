@@ -139,13 +139,13 @@ app.get('/api', (req, res) => {
 
       jsonData.forEach(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = req.protocol + '://' + req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'https://'+ req.get('host') + item.home_page_route_category_page_img;
           }
           item.product_container.forEach(product => {
-              product.imgs = req.protocol + '://' + req.get('host') + product.imgs;
-              product.first = req.protocol + '://' + req.get('host') + product.first;
-              product.second = req.protocol + '://' + req.get('host') + product.second;
-              product.third = req.protocol + '://' + req.get('host') + product.third;
+              product.imgs = 'https://'+ req.get('host') + product.imgs;
+              product.first = 'https://'+ req.get('host') + product.first;
+              product.second = 'https://'+ req.get('host') + product.second;
+              product.third = 'https://' + req.get('host') + product.third;
           });
       });
 
