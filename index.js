@@ -210,7 +210,6 @@ app.get('/api', (req, res) => {
     }
   });
 
-  //news later
 app.post('/newlater', async(req, res) =>{
   const {email} = req.body;
   
