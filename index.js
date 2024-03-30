@@ -14,7 +14,7 @@ require('dotenv').config(); // Load environment variables from .env file
 app.use(express.json()); // To parse JSON bodies
 app.use(bodyParser.json()); // Add this line to parse JSON requests
 app.use(cors());
-
+app.use(express.static(path.join(__dirname, 'assets')));
 
 
 mongoose
@@ -129,6 +129,8 @@ const User1 = mongoose.model("data", ContactSchema);
 app.get('/api', (req, res) => {
   const filePath = path.join(__dirname, 'data.json');
 
+  
+
   fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) {
           console.error(err);
@@ -139,15 +141,15 @@ app.get('/api', (req, res) => {
 
       const updatedData = jsonData.map(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = 'http://' + req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'https://' + req.get('host') + item.home_page_route_category_page_img;
           }
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  imgs: 'http://' + req.get('host') + product.imgs,
-                  first: 'http://' + req.get('host') + product.first,
-                  second: 'http://' + req.get('host') + product.second,
-                  third: 'http://' + req.get('host') + product.third
+                  imgs: 'https://' + req.get('host') + product.imgs,
+                  first: 'https://' + req.get('host') + product.first,
+                  second: 'https://' + req.get('host') + product.second,
+                  third: 'https://' + req.get('host') + product.third
               };
           });
           return item;
