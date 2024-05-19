@@ -141,15 +141,15 @@ app.get('/api', (req, res) => {
 
       const updatedData = jsonData.map(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = 'https://' + req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'http://' + req.get('host') + item.home_page_route_category_page_img;
           }
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  imgs: 'https://' + req.get('host') + product.imgs,
-                  first: 'https://' + req.get('host') + product.first,
-                  second: 'https://' + req.get('host') + product.second,
-                  third: 'https://' + req.get('host') + product.third
+                  imgs: 'http://' + req.get('host') + product.imgs,
+                  first: 'http://' + req.get('host') + product.first,
+                  second: 'http://' + req.get('host') + product.second,
+                  third: 'http://' + req.get('host') + product.third
               };
           });
           return item;
@@ -445,8 +445,15 @@ app.post('/login', async (req, res) => {
 
  const shippingInfo = user.shippingInfo || {};
 
+ const accountInfo = {
+  name: user.name,
+  email: user.email, 
+  mobile: user.mobile,
+  password: user.password,
+};
+
  // Return user data and cart items
- res.json({ success: true, data: token,cartdata:cartItems,wishdata:wishItems,shipping:shippingInfo });
+ res.json({ success: true, data: token,cartdata:cartItems,wishdata:wishItems,shipping:shippingInfo,accountInfo:accountInfo });
  } catch (error) {
   console.error('Error during login:', error);
  }
@@ -474,9 +481,14 @@ app.get('/api/user', async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      
+      const accountInfo = {
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        password: user.password,
+      };
 
-      res.json({ name: user.name,mobile:user.mobile,email:user.email, password:user.password , shipping:user.shippingInfo });
+      res.json({ accountInfo:accountInfo });
     });
   } catch (error) {
     console.error('Error fetching cart items:', error);
@@ -835,148 +847,35 @@ app.get('/get-user-address', async (req, res) => {
 // ACCOUNT INFORMATION UPDATE 
 
 
-app.post('/name_update', async (req, res) => {
-  const { name } = req.body; // Destructure name, mobile, and password from req.body
-  
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Token not provided' });
-    }
-
-    jwt.verify(token, 'secret-key', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
-
-      const user = await User.findOne({ email: decoded.email });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Update user details
-      user.name = name;
-      
-      await user.save();
-
-      console.log(user.name);
-      // console.log(user.mobile);
-      
-
-      res.json({ success: true, message: 'User details updated successfully' });
-    });
-  } catch (error) {
-    console.error('Error updating user details:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
-  }
-});
-
-
-app.post('/mobile_update', async (req, res) => {
-  const { mobile } = req.body; // Destructure name, mobile, and password from req.body
-  
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Token not provided' });
-    }
-
-    jwt.verify(token, 'secret-key', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
-
-      const user = await User.findOne({ email: decoded.email });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Update user details
-      user.mobile = mobile;
-      
-      await user.save();
-
-      console.log(user.mobile);
-      // console.log(user.mobile);
-      
-
-      res.json({ success: true, message: 'User details updated successfully' });
-    });
-  } catch (error) {
-    console.error('Error updating user details:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
-  }
-});
-
-
-app.post('/pass_update', async (req, res) => {
-  const { password , oldpass } = req.body; // Destructure name, mobile, and password from req.body
-  
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Token not provided' });
-    }
-
-    jwt.verify(token, 'secret-key', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
-
-      const user = await User.findOne({ email: decoded.email });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-     
-      // Update user details
-      console.log(oldpass)
-      const passwordMatch = await bcrypt.compare(oldpass, user.password);
-
-      if (!passwordMatch) {
-        return res.json({ success: false, error: 'Invalid  password' });
-      }
-        console.log(password)
-        const hashedPassword = await bcrypt.hash(password, 10);
-        console.log(hashedPassword)
-        user.password = hashedPassword;
-      
-        await user.save();
-
-       console.log(user.password);
-
-      
-      
-      
-
-      res.json({ success: true, message: 'User password updated successfully' });
-    });
-  } catch (error) {
-    console.error('Error updating user password:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
-  }
-}); 
 
 app.post('/update-account-data', async (req, res) => {
-  const { name,email,mobile } = req.body;
+  const { name,email,mobile,password,newpassword } = req.body;
+
+   console.log(mobile)
 
    
-
-   
-    const user = await User.findOne({email})
+    // const user = await User.findOne({email})
 
       
 
-      user.name = name;
-      user.email = email;
-      user.mobile = mobile;
-    await user.save();
+    //   user.name = name;
+    //   user.email = email;
+    //   user.mobile = mobile;
+
+    //   const passwordMatch = await bcrypt.compare(password, user.password);
+
+    //   if (!passwordMatch) {
+    //     return res.json({ success: false, error: 'Old Password is Not Correct' });
+    //   }
+
+    //   user.password=newpassword
+    // await user.save();
      
 
-      console.log(user)
+    //   console.log(user)
 
-      res.json({ success: true, message: 'Shipping information saved successfully' });  
-      });
+    //   res.json({ success: true, message: 'Your Information Has Been Updated' });  
+       });
 
 
   
