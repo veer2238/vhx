@@ -17,6 +17,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'assets')));
 
 
+
 mongoose
 .connect(
   "mongodb+srv://hundlanijay:hVFEqU8iumiSowXL@registerdata.pqv1sbi.mongodb.net/?retryWrites=true&w=majority"
@@ -141,15 +142,15 @@ app.get('/api', (req, res) => {
 
       const updatedData = jsonData.map(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = 'http://' + req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'https://' + req.get('host') + item.home_page_route_category_page_img;
           }
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  imgs: 'http://' + req.get('host') + product.imgs,
-                  first: 'http://' + req.get('host') + product.first,
-                  second: 'http://' + req.get('host') + product.second,
-                  third: 'http://' + req.get('host') + product.third
+                  imgs: 'https://' + req.get('host') + product.imgs,
+                  first: 'https://' + req.get('host') + product.first,
+                  second: 'https://' + req.get('host') + product.second,
+                  third: 'https://' + req.get('host') + product.third
               };
           });
           return item;
@@ -453,7 +454,7 @@ app.post('/login', async (req, res) => {
 };
 
  // Return user data and cart items
- res.json({ success: true, data: token,cartdata:cartItems,wishdata:wishItems,shipping:shippingInfo,accountInfo:accountInfo });
+ res.json({ success: true, data: token,name:user.name,cartdata:cartItems,wishdata:wishItems,shipping:shippingInfo,accountInfo:accountInfo });
  } catch (error) {
   console.error('Error during login:', error);
  }
