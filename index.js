@@ -142,15 +142,15 @@ app.get('/api', (req, res) => {
 
       const updatedData = jsonData.map(item => {
           if (item.home_page_route_category_page_img) {
-              item.home_page_route_category_page_img = 'https://' + req.get('host') + item.home_page_route_category_page_img;
+              item.home_page_route_category_page_img = 'http://' + req.get('host') + item.home_page_route_category_page_img;
           }
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  imgs: 'https://' + req.get('host') + product.imgs,
-                  first: 'https://' + req.get('host') + product.first,
-                  second: 'https://' + req.get('host') + product.second,
-                  third: 'https://' + req.get('host') + product.third
+                  imgs: 'http://' + req.get('host') + product.imgs,
+                  first: 'http://' + req.get('host') + product.first,
+                  second: 'http://' + req.get('host') + product.second,
+                  third: 'http://' + req.get('host') + product.third
               };
           });
           return item;
