@@ -137,17 +137,17 @@ app.get('/api', (req, res) => {
       const updatedData = jsonData.map(item => {
           // Update category_img
           if (item.category_img) {
-              item.category_img = 'https://' + req.get('host') + item.category_img;
+              item.category_img = 'http://' + req.get('host') + item.category_img;
           }
 
           // Update product_container
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  product_img: 'https://' + req.get('host') + product.product_img,
+                  product_img: 'http://' + req.get('host') + product.product_img,
                   side_img: product.side_img.map(sideImg => ({
                       ...sideImg,
-                      img: 'https://' + req.get('host') + sideImg.img
+                      img: 'http://' + req.get('host') + sideImg.img
                   })),
                   // Include any additional image fields that need updating
               };
@@ -511,7 +511,14 @@ app.post('/update-account-data', async (req, res) => {
         user.password=hashedPassword
     await user.save();
 
-    res.json({ success: true, message: 'Thanks Your Information sas Been Updated' });  
+    const accountInfo = {
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      password: user.password,
+    };
+
+    res.json({ success: true, message: 'Thanks Your Information sas Been Updated' ,accountInfo:accountInfo});  
     
     });
   } catch (error) {
