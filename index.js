@@ -518,7 +518,7 @@ app.post('/update-account-data', async (req, res) => {
       password: user.password,
     };
 
-    res.json({ success: true, message: 'Thanks Your Information sas Been Updated' ,accountInfo:accountInfo});  
+    res.json({ success: true, message: 'Thanks Your Information has Been Updated' ,accountInfo:accountInfo});  
     
     });
   } catch (error) {
