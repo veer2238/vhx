@@ -72,7 +72,7 @@ const registerSchema = new mongoose.Schema({
     pincode: String,
     landmark: String,
     city: String,
-    alternate: String
+   
   }
 
  
@@ -862,8 +862,8 @@ app.post('/remove-from-wish', async (req, res) => {
 
 
 app.post('/save-shipping-info', async (req, res) => {
-  const { shippingInfo } = req.body;
-  
+  const { name, mobile, email, address, state, pincode, landmark, city } = req.body;
+
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -880,15 +880,30 @@ app.post('/save-shipping-info', async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      
+      // Prepare the shipping information
+      const shippingInfo = {
+        name,
+        mobile,
+        email,
+        address,
+        state,
+        pincode,
+        landmark,
+        city
+      };
 
+      // Update user's shipping information
       user.shippingInfo = shippingInfo;
-    await user.save();
-     
+      await user.save();
 
-      console.log(user)
+      console.log(user);
 
-      res.json({ success: true, message: 'Shipping information saved successfully' });    });
+      res.json({
+        success: true,
+        message: 'Shipping information saved successfully',
+        shippingInfo: user.shippingInfo
+      });
+    });
   } catch (error) {
     console.error('Error saving shipping information:', error);
     res.status(500).json({ success: false, error: 'Internal Server Error' });
