@@ -1005,7 +1005,31 @@ app.post('/add-to-order', async (req, res) => {
 });
 
 
+app.get('/order', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
 
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+    
+      res.json({ orderInfo: user.order });
+    });
+  } catch (error) {
+    console.error('Error fetching order items:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
   
 
