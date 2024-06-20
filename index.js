@@ -61,6 +61,21 @@ const registerSchema = new mongoose.Schema({
      
   
     },
+
+    
+  ],
+
+  order: [
+    {
+      orderDate: { type: String},
+      categoryid:{type:Number},
+      productid: { type: Number},
+      size:{type: String},
+      quantity: { type: Number, default: 1 },
+  
+    },
+
+    
   ],
 
   shippingInfo: {
@@ -939,6 +954,55 @@ app.get('/get-user-address', async (req, res) => {
   }
 });
 
+app.post('/add-to-order', async (req, res) => {
+
+  const { orderDate } = req.body;
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+
+
+      // Add each cart item to the order with the current date
+      user.cart.forEach(item => {
+        user.order.push({
+          orderDate,
+          categoryid: item.categoryid,
+          productid: item.productid,
+          size: item.size,
+          quantity: item.quantity
+        });
+      });
+
+      // Clear user cart after adding to order
+      user.cart = [];
+
+      await user.save();
+
+      res.json({
+        success: true,
+        message: 'Thanks! Your Order has Been Confirmed',
+        orderInfo: user.order,
+        cartInfo: user.cart
+      });
+    });
+  } catch (error) {
+    console.error('Error adding to order:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
 
 
 
