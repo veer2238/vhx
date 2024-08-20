@@ -7,13 +7,12 @@ app.use(express.static('assets'));
 const cors = require('cors'); 
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
-const bodyParser = require('body-parser'); // Add this line
+const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
-const { type } = require('os');
-require('dotenv').config(); // Load environment variables from .env file
-app.use(express.json()); // To parse JSON bodies
-app.use(bodyParser.json()); // Add this line to parse JSON requests
+require('dotenv').config(); 
+app.use(express.json());
+app.use(bodyParser.json()); 
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'assets')));
 
@@ -45,37 +44,69 @@ const registerSchema = new mongoose.Schema({
   },
   cart: [
     {
-      categoryid:{type:Number},
-      productid: { type: Number},
-      size:{type: String},
-      quantity: { type: Number, default: 1 },
+      categoryid:{
+        type:Number,
+        required:true
+      },
+      productid: {
+         type: Number,
+         required:true
+        },
+      size:{
+        type: String,
+        required:true
+      },
+      productimg:{
+        type: String,
+        required:true
+      },
+      productname:{
+        type: String,
+        required:true
+      },
+      productprice:{
+        type: Number,
+        required:true
+      },
+      quantity: {
+         type: Number,
+          default: 1 
+        },
   
     },
   ],
 
- wish: [
+  wish: [
     {
-      categoryid:{type:Number},
-      productid: { type: Number},
-    
-     
-  
+
+      categoryid: {
+        type: Number,
+        // required:true,
+      },
+      productid:
+      {
+        type: Number,
+        // required:true,
+      },
+      productimg:
+      {
+        type: String,
+        // required:true
+      },
+      productname:
+      {
+        type: String,
+        // required:true
+      },
+      productprice:
+      {
+        type:Number,
+        // required:true
+      },
+   
+
+
     },
-
-    
-  ],
-
-  order: [
-    {
-      orderDate: { type: String},
-      categoryid:{type:Number},
-      productid: { type: Number},
-      size:{type: String},
-      quantity: { type: Number, default: 1 },
-  
-    },
-
-    
   ],
 
   shippingInfo: {
@@ -88,7 +119,62 @@ const registerSchema = new mongoose.Schema({
     landmark: String,
     city: String,
    
-  }
+  },
+
+  order: [
+      
+    {
+
+      orderDate:{ 
+        type: String
+
+       },
+
+      categoryid: {
+        type: Number,
+        required:true,
+      },
+      productid:
+      {
+        type: Number,
+        required:true,
+       
+      },
+      productimg:
+      {
+        type: String,
+        
+        
+       
+      },
+      productname:
+      {
+        type: String,
+       
+       
+      },
+      productprice:
+      {
+        type:String,
+     
+       
+      },
+      size:
+      {
+        type: String,
+        
+      },
+      quantity:
+      {
+        type: Number,
+        default: 1
+      }
+
+
+    },
+  ],
+
+ 
 
  
 });
@@ -137,6 +223,9 @@ const Contact = mongoose.model("contact", ContactSchema);
   const News = mongoose.model("newlater", NewsSchema);
 
 
+
+
+
 // get data from api
 app.get('/api', (req, res) => {
   const filePath = path.join(__dirname, 'data.json');
@@ -150,21 +239,21 @@ app.get('/api', (req, res) => {
       const jsonData = JSON.parse(data);
 
       const updatedData = jsonData.map(item => {
-          // Update category_img
+        
           if (item.category_img) {
-              item.category_img = 'http://' + req.get('host') + item.category_img;
+              item.category_img = 'https://' + req.get('host') + item.category_img;
           }
 
           // Update product_container
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  product_img: 'http://' + req.get('host') + product.product_img,
+                  product_img: 'https://' + req.get('host') + product.product_img,
                   side_img: product.side_img.map(sideImg => ({
                       ...sideImg,
-                      img: 'http://' + req.get('host') + sideImg.img
+                      img: 'https://' + req.get('host') + sideImg.img
                   })),
-                  // Include any additional image fields that need updating
+                  
               };
           });
           return item;
@@ -172,6 +261,8 @@ app.get('/api', (req, res) => {
 
       res.json({ success: true, data: updatedData });
   });
+
+  
 });
 
 
@@ -425,7 +516,7 @@ app.post('/login', async (req, res) => {
   const user = await User.findOne({ email });
 
     if (!user) {
-      return res.json({ success: false, error: 'Invalid username and pasword' });
+      return res.json({ success: false, error: 'Invalid username and password' });
     }
 
     // Compare the provided password with the hashed password in the database
@@ -442,19 +533,16 @@ app.post('/login', async (req, res) => {
 
 
 
- const wishItems = user.wish;
 
- const shippingInfo = user.shippingInfo || {};
 
  const accountInfo = {
   name: user.name,
   email: user.email, 
   mobile: user.mobile,
-  password: user.password,
 };
 
  // Return user data and cart items
- res.json({success: true,message:'Thanks Shop here', data: token,cartInfo:user.cart,wishdata:wishItems,shipping:shippingInfo,accountInfo:accountInfo });
+ res.json({success: true,message:'Thanks Shop here', data:token,cartInfo:user.cart,wishInfo:user.wish,shippingInfo:user.shippingInfo,accountInfo:accountInfo,orderInfo:user.order });
  } catch (error) {
   console.error('Error during login:', error);
  }
@@ -463,7 +551,7 @@ app.post('/login', async (req, res) => {
 
 
 // get account data
-app.get('/api/user', async (req, res) => {
+app.get('/account-details', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -472,7 +560,7 @@ app.get('/api/user', async (req, res) => {
 
     jwt.verify(token, 'secret-key', async (err, decoded) => {
       if (err) {
-        return res.status(401).json({ merror: 'Invalid token' });
+        return res.status(401).json({ error: 'Invalid token' });
       }
 
       const user = await User.findOne({ email: decoded.email });
@@ -484,7 +572,7 @@ app.get('/api/user', async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
-        password: user.password,
+    
       };
 
       res.json({ accountInfo:accountInfo });
@@ -505,33 +593,36 @@ app.post('/update-account-data', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-      return res.status(401).json({success: false,  alert: 'Token not provided' });
+      return res.status(401).json({success: false,  error: 'Token not provided' });
     }
 
     jwt.verify(token, 'secret-key', async (err, decoded) => {
       if (err) {
-        return res.status(401).json({success: false, alert: 'Invalid token' });
+        return res.status(401).json({success: false, error: 'Invalid token' });
       }
 
       const user = await User.findOne({ email: decoded.email });
       if (!user) {
-        return res.status(404).json({success: false, alert: 'User not found' });
+        return res.status(404).json({success: false, error: 'User not found' });
       }
+
+     
 
       const hashedPassword = await bcrypt.hash(password, 10);
         user.name = name;
       user.email = email;
       user.mobile = mobile;
-
-        user.password=hashedPassword
+      user.password=hashedPassword
     await user.save();
 
     const accountInfo = {
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile,
-      password: user.password,
+    
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+      
     };
+   
 
     res.json({ success: true, message: 'Thanks Your Information has Been Updated' ,accountInfo:accountInfo});  
     
@@ -548,9 +639,9 @@ app.post('/update-account-data', async (req, res) => {
 
 // post for add to cart
 app.post('/add-to-cart', async (req, res) => {
-  const { categoryid,productid,size } = req.body;
+  const { categoryid,productid,size,productimg,productname,productprice } = req.body;
 
-  console.log(categoryid,productid,size)
+  // console.log(categoryid,productid,size,productname,productprice,productimg)
   
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -580,9 +671,7 @@ app.post('/add-to-cart', async (req, res) => {
 
      
       user.cart.push({
-        categoryid,
-        productid,
-       size
+        categoryid,productid,size,productname,productprice,productimg
         
       });
 
@@ -618,6 +707,8 @@ app.get('/cart', async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
+
+
       // Send the user's cart items
       res.json({ cartInfo: user.cart });
     });
@@ -627,6 +718,7 @@ app.get('/cart', async (req, res) => {
   }
 });
  
+
 // for remove product 
 app.post('/remove-from-cart', async (req, res) => {
   const { categoryid,productid,size } = req.body;
@@ -663,6 +755,7 @@ app.post('/remove-from-cart', async (req, res) => {
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
+
 
 // for increase quantity
 app.post('/increase-quantity', async (req, res) => {
@@ -756,54 +849,55 @@ app.post('/decrease-quantity', async (req, res) => {
   }
 });
 
-// post for add to cart
-app.post('/add-to-wish', async (req, res) => {
-  const { categoryid,productid} = req.body;
 
-  console.log(categoryid,productid)
-  
+
+// post for add to wish
+app.post('/add-to-wish', async (req, res) => {
+  const { categoryid, productid,productimg,productname,productprice} = req.body;
+
+  console.log(categoryid, productid,productimg,productname,productprice)
+
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-      return res.status(401).json({ error: 'Token not provided' });
+      return res.status(401).json({ success: false, error: 'Token not provided' });
     }
 
     jwt.verify(token, 'secret-key', async (err, decoded) => {
       if (err) {
-        return res.status(401).json({ error: 'Invalid token' });
+        return res.status(401).json({ success: false, error: 'Invalid token' });
       }
 
       const user = await User.findOne({ email: decoded.email });
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
 
-      
-      // Check if the product already exists in the cart with the same categoryid, productid, and size
       const existingProduct = user.wish.find(
         item => item.categoryid === categoryid && item.productid === productid 
       );
-
       if (existingProduct) {
-        return res.json({ success:false,error: 'Product already in wishlist' });
+        return res.json({ success: false, error: 'Product  already in the wishlist' });
       }
 
-     
+      // Add the product to the user's wish
       user.wish.push({
         categoryid,
         productid,
-     
+        productimg,
+        productname,
+        productprice,
         
       });
 
-      await user.save();
+      const result = await user.save();
 
-      console.log(user)
+      console.log(result);
 
-      res.json({ success: true, message: 'Thanks Product added to wishlist',wishInfo:user.wish});
+      res.json({ success: true, message: 'Thanks Product added to wish', wishInfo: user.wish });
     });
   } catch (error) {
-    console.error('Error adding to cart:', error);
+    console.error('Error adding to wish', error);
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
@@ -876,9 +970,9 @@ app.post('/remove-from-wish', async (req, res) => {
 
 
 
-app.post('/save-shipping-info', async (req, res) => {
-  const { name, mobile, email, address, state, pincode, landmark, city } = req.body;
 
+// get shipping info
+app.get('/get-user-address', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -893,6 +987,35 @@ app.post('/save-shipping-info', async (req, res) => {
       const user = await User.findOne({ email: decoded.email });
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Send the user's cart items
+      res.json({ shippingInfo: user.shippingInfo });
+    });
+  } catch (error) {
+    console.error('Error fetching cart items:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// update shipping info
+app.post('/save-shipping-info', async (req, res) => {
+  const { name, email, mobile, address, state, pincode, landmark, city } = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success:false,error:'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({success:false,error: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({success:false,error: 'User not found' });
       }
 
       // Prepare the shipping information
@@ -915,7 +1038,7 @@ app.post('/save-shipping-info', async (req, res) => {
 
       res.json({
         success: true,
-        message: 'Shipping information saved successfully',
+        message: 'Thanks Shipping information saved successfully',
         shippingInfo: user.shippingInfo
       });
     });
@@ -925,35 +1048,11 @@ app.post('/save-shipping-info', async (req, res) => {
   }
 });
 
-app.get('/get-user-address', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Token not provided' });
-    }
 
-    jwt.verify(token, 'secret-key', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ message: 'Invalid token' });
-      }
 
-      const user = await User.findOne({ email: decoded.email });
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
 
-      // You can directly send the shipping information in the response
-      const shippingInfo = user.shippingInfo || {};
 
-      res.json({ success: true, data:shippingInfo });
-      console.log(shippingInfo)
-    });
-  } catch (error) {
-    console.error('Error fetching user address:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
-  }
-});
-
+// add to order
 app.post('/add-to-order', async (req, res) => {
 
   const { orderDate } = req.body;
@@ -981,8 +1080,12 @@ app.post('/add-to-order', async (req, res) => {
           orderDate,
           categoryid: item.categoryid,
           productid: item.productid,
+          productimg:item.productimg,
+          productname:item.productname,
+          productprice:item.productprice,
           size: item.size,
-          quantity: item.quantity
+          quantity: item.quantity,
+
         });
       });
 
@@ -1005,6 +1108,7 @@ app.post('/add-to-order', async (req, res) => {
 });
 
 
+// get order
 app.get('/order', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
