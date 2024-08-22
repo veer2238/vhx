@@ -223,8 +223,8 @@
     {
         "id": 2,
         "category_img": "/category/banner1/prod2.png",
-        "product_category_route": "sport-shoes",
-        "product_category": "Sport Shoes",
+        "product_category_route": "sport-sando",
+        "product_category": "Sport Sando",
         "product_container": [
             {
                 "id": 1,
@@ -247,15 +247,6 @@
                     { 
                         "id":1,
                         "img": "/products/shoes/shoes1/shoes1/shoes1-1.png"
-                    },
-                    {
-                        "id":2,
-                        "img": "/products/shoes/shoes1/shoes1/shoes1-2.png"
-                    },
-
-                    {
-                        "id":3,
-                        "img": "/products/shoes/shoes1/shoes1/shoes1-3.png"
                     }
                    
                 ],
@@ -333,15 +324,6 @@
                     { 
                         "id":1,
                         "img": "/products/shoes/shoes1/shoes3/shoes3-1.png"
-                    },
-                    {
-                        "id":2,
-                        "img": "/products/shoes/shoes1/shoes3/shoes3-2.png"
-                    },
-
-                    {
-                        "id":3,
-                        "img": "/products/shoes/shoes1/shoes3/shoes3-3.png"
                     }
                    
                 ],
@@ -380,11 +362,6 @@
                     {
                         "id":2,
                         "img": "/products/shoes/shoes1/shoes4/shoes4-2.png"
-                    },
-
-                    {
-                        "id":3,
-                        "img": "/products/shoes/shoes1/shoes4/shoes4-3.png"
                     }
                    
                 ],
@@ -423,11 +400,6 @@
                     {
                         "id":2,
                         "img": "/products/shoes/shoes1/shoes5/shoes5-2.png"
-                    },
-
-                    {
-                        "id":3,
-                        "img": "/products/shoes/shoes1/shoes5/shoes5-3.png"
                     }
                    
                 ],
