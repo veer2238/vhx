@@ -241,17 +241,17 @@ app.get('/api', (req, res) => {
       const updatedData = jsonData.map(item => {
         
           if (item.category_img) {
-              item.category_img = 'http://' + req.get('host') + item.category_img;
+              item.category_img = 'https://' + req.get('host') + item.category_img;
           }
 
           // Update product_container
           item.product_container = item.product_container.map(product => {
               return {
                   ...product,
-                  product_img: 'http://' + req.get('host') + product.product_img,
+                  product_img: 'https://' + req.get('host') + product.product_img,
                   side_img: product.side_img.map(sideImg => ({
                       ...sideImg,
-                      img: 'http://' + req.get('host') + sideImg.img
+                      img: 'https://' + req.get('host') + sideImg.img
                   })),
                   
               };
