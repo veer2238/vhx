@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, 'assets')));
 const merchantId = process.env.MERCHANT_ID;
 const saltKey = process.env.SALT_KEY;
 const saltIndex = process.env.SALT_INDEX;
-const frontendUrl = 'https://vhxview.com/payment';
+const frontendUrl = 'https://vhxview.com/confirm';
 
 
 mongoose
