@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, 'assets')));
 const merchantId = process.env.MERCHANT_ID;
 const saltKey = process.env.SALT_KEY;
 const saltIndex = process.env.SALT_INDEX;
-const frontendUrl = 'https://vhxview.com';
+const frontendUrl = 'https://vhxview.com/payment';
 
 
 mongoose
@@ -1142,80 +1142,131 @@ app.get('/order', async (req, res) => {
   }
 });
 
+
+
   
 
 
-// app.post('/create-payment', async (req, res) => {
-//   const { amount, orderId} = req.body;
+      //  app.post('/create-payment', async (req, res) => {
+      //   const { amount, orderId} = req.body;
+      
+      //   try {
+      //     const token = req.headers.authorization?.split(' ')[1];
+      //     if (!token) {
+      //       return res.status(401).json({ message: 'Token not provided' });
+      //     }
+      
+      //     jwt.verify(token, 'secret-key', async (err, decoded) => {
+      //       if (err) {
+      //         return res.status(401).json({ message: 'Invalid token' });
+      //       }
+      
+      //       const user = await User.findOne({ email: decoded.email });
+      //       if (!user) {
+      //         return res.status(404).json({ message: 'User not found' });
+      //       }
+      //       const payload = {
+      //         merchantId: merchantId,
+      //         merchantTransactionId: orderId,
+      //         merchantUserId:user.email,
+      //         amount: amount*100,
+      //         redirectMode: "REDIRECT",
+      //         redirectUrl: `${frontendUrl}?orderId=${orderId}`,
+      //         // callbackUrl: `${frontendUrl}/confirm`,
+      //         // mobileNumber: user.mobile,
+      //         paymentInstrument: {
+      //             type: "PAY_PAGE"
+      //         }
+      //     };
+      
+      //      // Convert payload to JSON string
+      //      const payloadString = JSON.stringify(payload);
+      
+      //            // Convert JSON string to Base64
+      //     const base64Encoded = Buffer.from(payloadString).toString('base64');
+          
+      // // for header
+      //     const stringToHash = `${base64Encoded}/pg/v1/pay${saltKey}`;
+      // const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+      // const finalXHeader = `${sha256Hash}###${saltIndex}`;
+      
+      //      // Prepare request to PhonePe
+      //      const request = {
+      //       request: base64Encoded
+      //   };
+      
+      //   // Send request to PhonePe
+      //   const {data} = await axios.post('https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay', request, {
+      //     headers: {
+      //         'Content-Type': 'application/json',
+      //         'X-VERIFY': finalXHeader
+      //     }
+      // });
+      
+      
+      //  // Check the response from PhonePe
+      //  if (data.success) {
+        
+      //   res.json({
+      //       success: true,
+      //       data: data.data.instrumentResponse.redirectInfo.url,
+            
+      //   });
+      // } else {
+      //   res.json({ success: false, message: "Failed to initiate payment" });
+      // }
+            
+      //     });
+      //   } catch (error) {
+      //     console.error('Error creating payment:', error);
+      //     res.status(500).json({ success: false, error: error.message });
+      // }
+      
+      // });
 
-//   console.log(amount)
 
-//   // Prepare the payload
-//   const payload = {
-//       merchantId: merchantId,
-//       merchantTransactionId: orderId,
-//       merchantUserId:'hi',
-//       amount: amount*100,
-//       redirectUrl: 'https://v-extechsolution.in/',
-//       redirectMode: "REDIRECT",
-//       callbackUrl: 'https://zephyr.v-extechsolution.in/',
-//       // mobileNumber: customerPhone,
-//       paymentInstrument: {
-//           type: "PAY_PAGE"
-//       }
-//   };
 
-//   try {
-//       // Convert payload to JSON string
-//       const payloadString = JSON.stringify(payload);
+      app.post('/verify-payment', async (req, res) => {
+        const { orderId } = req.body;
+      
+      
+        try {
+          // Create the PhonePe check status URL
+          const checkStatusUrl = `https://api.phonepe.com/apis/hermes/pg/v1/status/${merchantId}/${orderId}`;
+          
+          // Generate the X-VERIFY header
+          const stringToHash = `/pg/v1/status/${merchantId}/${orderId}${saltKey}`;
+          const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+          const finalXHeader = `${sha256Hash}###${saltIndex}`;
+          
+          // Send the request to PhonePe to check the payment status
+          const { data } = await axios.get(checkStatusUrl, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-VERIFY': finalXHeader,
+            },
+          });
+      
+          // Check the response from PhonePe
+          if (data.success) {
+            const paymentStatus = data.data.status;
+            if (paymentStatus === 'SUCCESS') {
+              // Perform actions like saving the order, clearing the cart, etc.
+              res.json({ success: true, message: 'Payment successful' });
+            } else {
+              res.json({ success: false, message: 'Payment failed' });
+            }
+          } else {
+            res.json({ success: false, message: 'Failed to verify payment status' });
+          }
+        } catch (error) {
+          console.error('Error verifying payment:', error);
+          res.status(500).json({ success: false, error: error.message });
+        }
+      });
+      
 
-//       // Convert JSON string to Base64
-//       const base64Encoded = Buffer.from(payloadString).toString('base64');
 
-//       // Generate checksum
-    
-
-                            
-// const stringToHash = `${base64Encoded}/pg/v1/pay${saltKey}`;
-// const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
-// const finalXHeader = `${sha256Hash}###${saltIndex}`;
-//       // Prepare request to PhonePe
-//       const request = {
-//           request: base64Encoded
-//       };
-
-//       // Send request to PhonePe
-//       // const response = await axios.post('https://api.phonepe.com/apis/hermes/pg/v1/pay', request, {
-//       //     headers: {
-//       //         'Content-Type': 'application/json',
-//       //         'X-VERIFY': finalXHeader
-//       //     }
-//       // });
-
-//       const response = await axios.post('https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay', request, {
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'X-VERIFY': finalXHeader
-//         }
-//     });
-
-//       console.log(response.data.data.instrumentResponse.redirectInfo.url)
-
-//       // Check the response from PhonePe
-//       if (response.data.success) {
-//           // If payment is initiated successfully, send the redirect URL to the frontend
-//           res.json({
-//               success: true,
-//               data: response.data.data.instrumentResponse.redirectInfo.url
-//           });
-//       } else {
-//           res.json({ success: false, message: "Failed to initiate payment" });
-//       }
-//   } catch (error) {
-//       console.error('Error creating payment:', error);
-//       res.status(500).json({ success: false, error: error.message });
-//   }
-// });
 
 app.post('/create-payment', async (req, res) => {
   const { amount, orderId} = req.body;
@@ -1241,7 +1292,7 @@ app.post('/create-payment', async (req, res) => {
         merchantUserId:user.email,
         amount: amount*100,
         redirectMode: "REDIRECT",
-        redirectUrl: `${frontendUrl}/confirm`,
+        redirectUrl: `${frontendUrl}?orderId=${orderId}`,
         // callbackUrl: `${frontendUrl}/confirm`,
         // mobileNumber: user.mobile,
         paymentInstrument: {
@@ -1266,7 +1317,7 @@ const finalXHeader = `${sha256Hash}###${saltIndex}`;
   };
 
   // Send request to PhonePe
-       const response = await axios.post('https:api.phonepe.com/apis/hermes/pg/v1/pay', request, {
+       const response = await axios.post('https://api.phonepe.com/apis/hermes/pg/v1/pay', request, {
            headers: {
                'Content-Type': 'application/json',
                'X-VERIFY': finalXHeader
@@ -1295,55 +1346,30 @@ const finalXHeader = `${sha256Hash}###${saltIndex}`;
 });
 
 
-// Endpoint to handle payment callback
-// app.post('/phonepe-callback', async (req, res) => {
-//   const { paymentStatus, orderId } = req.body;
 
-//   try {
-//     if (paymentStatus === 'SUCCESS') {
-//       const token = req.headers.authorization?.split(' ')[1];
-//       if (!token) {
-//         return res.status(401).json({ error: 'Token not provided' });
-//       }
 
-//       jwt.verify(token, 'secret-key', async (err, decoded) => {
-//         if (err) {
-//           return res.status(401).json({ error: 'Invalid token' });
-//         }
 
-//         const user = await User.findOne({ email: decoded.email });
-//         if (!user) {
-//           return res.status(404).json({ error: 'User not found' });
-//         }
 
-//         user.cart.forEach(item => {
-//           user.order.push({
-//             orderDate: new Date(),
-//             categoryid: item.categoryid,
-//             productid: item.productid,
-//             productimg: item.productimg,
-//             productname: item.productname,
-//             productprice: item.productprice,
-//             size: item.size,
-//             quantity: item.quantity,
-//           });
-//         });
 
-//         user.cart = [];
-//         await user.save();
 
-//         // Redirect to success page
-//         return res.redirect(`${frontendUrl}/confirm`);
-//       });
-//     } else {
-//       // Redirect to failure page
-//       return res.redirect(`${frontendUrl}/payment`);
-//     }
-//   } catch (error) {
-//     console.error('Error in payment callback:', error);
-//     return res.status(500).json({ success: false, error: 'Internal Server Error' });
-//   }
-// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // schedule.scheduleJob('30 17 * 3 5', async () => {
 //   try {
