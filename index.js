@@ -1244,20 +1244,22 @@ app.get('/order', async (req, res) => {
             headers: {
               'Content-Type': 'application/json',
               'X-VERIFY': finalXHeader,
+              'X-MERCHANT-ID':merchantId
             },
           });
       
           // Check the response from PhonePe
-          if (data.success) {
-            const paymentStatus = data.data.status;
-            if (paymentStatus === 'SUCCESS') {
-              // Perform actions like saving the order, clearing the cart, etc.
-              res.json({ success: true, message: 'Payment successful' });
-            } else {
-              res.json({ success: false, message: 'Payment failed' });
-            }
+          if (data.success && data.code === 'PAYMENT_SUCCESS' && data.data.state === 'COMPLETED') {
+            // Perform actions like saving the order, clearing the cart, etc.
+            res.json({
+              success: true,
+              message: 'Payment successful',
+              transactionId: data.data.transactionId, // Return the transaction ID if needed
+              paymentMethod: data.data.paymentInstrument.type, // Return the payment method (e.g., UPI)
+              amount: data.data.amount, // Return the payment amount
+            });
           } else {
-            res.json({ success: false, message: 'Failed to verify payment status' });
+            res.json({ success: false, message: 'Payment failed or not completed.' });
           }
         } catch (error) {
           console.error('Error verifying payment:', error);
