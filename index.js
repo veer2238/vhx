@@ -3,8 +3,10 @@ const express = require('express');
 const app = express();
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios')
 app.use(express.static('assets'));
 const cors = require('cors'); 
+const crypto=require('crypto')
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
@@ -16,6 +18,10 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'assets')));
 
+const merchantId = process.env.MERCHANT_ID;
+const saltKey = process.env.SALT_KEY;
+const saltIndex = process.env.SALT_INDEX;
+const frontendUrl = 'https://vhxview.com';
 
 
 mongoose
@@ -232,37 +238,37 @@ app.get('/api', (req, res) => {
 
   fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) {
-          console.error(err);
+          console.error('Error reading file:', err);
           return res.json({ success: false, error: 'Internal Server Error' });
       }
 
-      const jsonData = JSON.parse(data);
+      try {
+          const jsonData = JSON.parse(data);
 
-      const updatedData = jsonData.map(item => {
-        
-          if (item.category_img) {
-              item.category_img = 'https://' + req.get('host') + item.category_img;
-          }
+          const updatedData = jsonData.map(item => {
+              if (item.category_img) {
+                  item.category_img = `${req.protocol}://${req.get('host')}${item.category_img}`;
+              }
 
-          // Update product_container
-          item.product_container = item.product_container.map(product => {
-              return {
+              // Update product_container
+              item.product_container = item.product_container.map(product => ({
                   ...product,
-                  product_img: 'https://' + req.get('host') + product.product_img,
+                  product_img: `${req.protocol}://${req.get('host')}${product.product_img}`,
                   side_img: product.side_img.map(sideImg => ({
                       ...sideImg,
-                      img: 'https://' + req.get('host') + sideImg.img
+                      img: `${req.protocol}://${req.get('host')}${sideImg.img}`,
                   })),
-                  
-              };
+              }));
+
+              return item;
           });
-          return item;
-      });
 
-      res.json({ success: true, data: updatedData });
+          res.json({ success: true, data: updatedData });
+      } catch (parseError) {
+          console.error('Error parsing JSON:', parseError);
+          res.json({ success: false, error: 'Internal Server Error' });
+      }
   });
-
-  
 });
 
 
@@ -498,7 +504,8 @@ const result = await User.create({
 catch (error) {
   console.error('Error during registration:', error);
 
-  res.json({ success: false, error: 'Internal Server Error' });
+  res.status(500).json({ success: false, error: 'Internal Server Error' });
+
 }
 
 
@@ -512,41 +519,41 @@ catch (error) {
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
- try {
-  const user = await User.findOne({ email });
+  try {
+      const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.json({ success: false, error: 'Invalid username and password' });
-    }
+      if (!user) {
+          return res.json({ success: false, error: 'Invalid username and password' });
+      }
 
-    // Compare the provided password with the hashed password in the database
-    const passwordMatch = await bcrypt.compare(password, user.password);
+      const passwordMatch = await bcrypt.compare(password, user.password);
 
-    if (!passwordMatch) {
-      return res.json({ success: false, error: 'Invalid username and password' });
-    }
+      if (!passwordMatch) {
+          return res.json({ success: false, error: 'Invalid username and password' });
+      }
 
-    const token = jwt.sign({ email }, 'secret-key', { expiresIn: '24h' });
+      const token = jwt.sign({ email }, 'secret-key', { expiresIn: '24h' });
 
-    console.log(token)
-    
+      const accountInfo = {
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+      };
 
-
-
-
-
- const accountInfo = {
-  name: user.name,
-  email: user.email, 
-  mobile: user.mobile,
-};
-
- // Return user data and cart items
- res.json({success: true,message:'Thanks Shop here', data:token,cartInfo:user.cart,wishInfo:user.wish,shippingInfo:user.shippingInfo,accountInfo:accountInfo,orderInfo:user.order });
- } catch (error) {
-  console.error('Error during login:', error);
- }
- 
+      res.json({
+          success: true,
+          message: 'Thanks for logging in!',
+          data: token,
+          cartInfo: user.cart,
+          wishInfo: user.wish,
+          shippingInfo: user.shippingInfo,
+          accountInfo: accountInfo,
+          orderInfo: user.order
+      });
+  } catch (error) {
+      console.error('Error during login:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
 });
 
 
@@ -1138,7 +1145,205 @@ app.get('/order', async (req, res) => {
   
 
 
+// app.post('/create-payment', async (req, res) => {
+//   const { amount, orderId} = req.body;
 
+//   console.log(amount)
+
+//   // Prepare the payload
+//   const payload = {
+//       merchantId: merchantId,
+//       merchantTransactionId: orderId,
+//       merchantUserId:'hi',
+//       amount: amount*100,
+//       redirectUrl: 'https://v-extechsolution.in/',
+//       redirectMode: "REDIRECT",
+//       callbackUrl: 'https://zephyr.v-extechsolution.in/',
+//       // mobileNumber: customerPhone,
+//       paymentInstrument: {
+//           type: "PAY_PAGE"
+//       }
+//   };
+
+//   try {
+//       // Convert payload to JSON string
+//       const payloadString = JSON.stringify(payload);
+
+//       // Convert JSON string to Base64
+//       const base64Encoded = Buffer.from(payloadString).toString('base64');
+
+//       // Generate checksum
+    
+
+                            
+// const stringToHash = `${base64Encoded}/pg/v1/pay${saltKey}`;
+// const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+// const finalXHeader = `${sha256Hash}###${saltIndex}`;
+//       // Prepare request to PhonePe
+//       const request = {
+//           request: base64Encoded
+//       };
+
+//       // Send request to PhonePe
+//       // const response = await axios.post('https://api.phonepe.com/apis/hermes/pg/v1/pay', request, {
+//       //     headers: {
+//       //         'Content-Type': 'application/json',
+//       //         'X-VERIFY': finalXHeader
+//       //     }
+//       // });
+
+//       const response = await axios.post('https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay', request, {
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'X-VERIFY': finalXHeader
+//         }
+//     });
+
+//       console.log(response.data.data.instrumentResponse.redirectInfo.url)
+
+//       // Check the response from PhonePe
+//       if (response.data.success) {
+//           // If payment is initiated successfully, send the redirect URL to the frontend
+//           res.json({
+//               success: true,
+//               data: response.data.data.instrumentResponse.redirectInfo.url
+//           });
+//       } else {
+//           res.json({ success: false, message: "Failed to initiate payment" });
+//       }
+//   } catch (error) {
+//       console.error('Error creating payment:', error);
+//       res.status(500).json({ success: false, error: error.message });
+//   }
+// });
+
+app.post('/create-payment', async (req, res) => {
+  const { amount, orderId} = req.body;
+
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token not provided' });
+    }
+
+    jwt.verify(token, 'secret-key', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      const user = await User.findOne({ email: decoded.email });
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      const payload = {
+        merchantId: merchantId,
+        merchantTransactionId: orderId,
+        merchantUserId:user.email,
+        amount: amount*100,
+        redirectMode: "REDIRECT",
+        redirectUrl: `${frontendUrl}/confirm`,
+        // callbackUrl: `${frontendUrl}/confirm`,
+        // mobileNumber: user.mobile,
+        paymentInstrument: {
+            type: "PAY_PAGE"
+        }
+    };
+
+     // Convert payload to JSON string
+     const payloadString = JSON.stringify(payload);
+
+           // Convert JSON string to Base64
+    const base64Encoded = Buffer.from(payloadString).toString('base64');
+    
+// for header
+    const stringToHash = `${base64Encoded}/pg/v1/pay${saltKey}`;
+const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex');
+const finalXHeader = `${sha256Hash}###${saltIndex}`;
+
+     // Prepare request to PhonePe
+     const request = {
+      request: base64Encoded
+  };
+
+  // Send request to PhonePe
+       const response = await axios.post('https:api.phonepe.com/apis/hermes/pg/v1/pay', request, {
+           headers: {
+               'Content-Type': 'application/json',
+               'X-VERIFY': finalXHeader
+           }
+       });
+
+
+ // Check the response from PhonePe
+ if (response.data.success) {
+  // If payment is initiated successfully, send the redirect URL to the frontend
+  res.json({
+      success: true,
+      data: response.data.data.instrumentResponse.redirectInfo.url,
+      
+  });
+} else {
+  res.json({ success: false, message: "Failed to initiate payment" });
+}
+      
+    });
+  } catch (error) {
+    console.error('Error creating payment:', error);
+    res.status(500).json({ success: false, error: error.message });
+}
+
+});
+
+
+// Endpoint to handle payment callback
+// app.post('/phonepe-callback', async (req, res) => {
+//   const { paymentStatus, orderId } = req.body;
+
+//   try {
+//     if (paymentStatus === 'SUCCESS') {
+//       const token = req.headers.authorization?.split(' ')[1];
+//       if (!token) {
+//         return res.status(401).json({ error: 'Token not provided' });
+//       }
+
+//       jwt.verify(token, 'secret-key', async (err, decoded) => {
+//         if (err) {
+//           return res.status(401).json({ error: 'Invalid token' });
+//         }
+
+//         const user = await User.findOne({ email: decoded.email });
+//         if (!user) {
+//           return res.status(404).json({ error: 'User not found' });
+//         }
+
+//         user.cart.forEach(item => {
+//           user.order.push({
+//             orderDate: new Date(),
+//             categoryid: item.categoryid,
+//             productid: item.productid,
+//             productimg: item.productimg,
+//             productname: item.productname,
+//             productprice: item.productprice,
+//             size: item.size,
+//             quantity: item.quantity,
+//           });
+//         });
+
+//         user.cart = [];
+//         await user.save();
+
+//         // Redirect to success page
+//         return res.redirect(`${frontendUrl}/confirm`);
+//       });
+//     } else {
+//       // Redirect to failure page
+//       return res.redirect(`${frontendUrl}/payment`);
+//     }
+//   } catch (error) {
+//     console.error('Error in payment callback:', error);
+//     return res.status(500).json({ success: false, error: 'Internal Server Error' });
+//   }
+// });
 
 // schedule.scheduleJob('30 17 * 3 5', async () => {
 //   try {
